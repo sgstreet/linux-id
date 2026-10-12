@@ -111,16 +111,24 @@ function handle() {
     fi
 }
 
+# True when this script was extracted from a release tarball: the prebuilt
+# binary sits next to it and there is no source tree to build from.
+function in_release_dir() {
+    [ ! -f "$script_dir/go.mod" ] && [ -f "$script_dir/$executable" ] && [ -x "$script_dir/$executable" ]
+}
+
 function check_prereqs() {
     if [ ! -d /sys/class/tpm/tpm0 ]; then
         echo "TPM is not present, make sure to enable it in BIOS/UEFI" >&2
         exit 1
     fi
 
-    # Either we're in a source clone (go.mod + go) and build, or we download
-    # the latest release tarball with curl/wget. No stale local binary path,
-    # so re-running install.sh always picks up the latest published version.
+    # In a source clone (go.mod + go) we build; in an extracted release
+    # tarball we install the binary shipped next to this script; otherwise
+    # we download the latest release tarball with curl/wget.
     if [ -f "$script_dir/go.mod" ] && command -v go &>/dev/null; then
+        :
+    elif in_release_dir; then
         :
     elif command -v curl &>/dev/null || command -v wget &>/dev/null; then
         :
@@ -197,6 +205,9 @@ function make_executable() {
         echo "Building $executable from source in $script_dir"
         ( cd "$script_dir" && go build -o "$executable" )
         handle "Failed to build executable with go"
+        source_binary="$script_dir/$executable"
+    elif in_release_dir; then
+        echo "Installing the prebuilt $executable from $script_dir"
         source_binary="$script_dir/$executable"
     else
         local tmp

@@ -33,6 +33,17 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # Ship install.sh with the binary so an extracted release installs itself.
+    # Files stay at the archive root: install.sh's download path expects
+    # linux-id there.
+    files:
+      - LICENSE
+      - README.md
+      - install.sh
+
+# Unversioned name so .../releases/latest/download/checksums.txt works (README).
+checksum:
+  name_template: checksums.txt
 
 changelog:
   sort: asc

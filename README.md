@@ -4,13 +4,22 @@ Linux-id is FIDO token implementation for Linux that protects the token keys by 
 
 ## Setup
 
+Download the latest release, check it, and run the bundled installer:
 
 ```bash
-curl -O https://raw.githubusercontent.com/sgstreet/linux-id/refs/heads/main/install.sh
-chmod +x install.sh
+arch=x86_64   # or arm64, i386
+base=https://github.com/sgstreet/linux-id/releases/latest/download
+curl -fsSLO "$base/linux-id_Linux_$arch.tar.gz"
+curl -fsSL "$base/checksums.txt" | grep "linux-id_Linux_$arch.tar.gz" | sha256sum -c -
+mkdir -p linux-id && tar -xzf "linux-id_Linux_$arch.tar.gz" -C linux-id
+cd linux-id
 # Read what the script does before running it
 ./install.sh
 ```
+
+The archive contains the prebuilt `linux-id` binary and `install.sh`, which installs that binary along with the systemd user service and udev rules. Releases are listed at https://github.com/sgstreet/linux-id/releases.
+
+To build from source instead (requires Go 1.26+), run `./install.sh` from a clone of this repository; it builds the binary with `go build`.
 
 If you have a fingerprint enrolled with fprintd (`fprintd-enroll`), `install.sh` sets the service up for fingerprint authentication (`--auth fprintd`); otherwise it uses the pinentry click dialog. To choose explicitly, pass `--auth fprintd` or `--auth pinentry`.
 
