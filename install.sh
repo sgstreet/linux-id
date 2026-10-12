@@ -320,6 +320,14 @@ EOF
 
 KERNEL=="uhid",   SUBSYSTEM=="misc",  TAG+="uaccess"
 KERNEL=="tpmrm0", SUBSYSTEM=="tpmrm", TAG+="uaccess"
+
+# Let snap-packaged browsers open linux-id's virtual token. snapd's
+# u2f-devices interface only admits known USB keys by idVendor/idProduct,
+# which a uhid device has no USB parent to match, so the snap's device
+# cgroup silently blocks it. Tagging the hidraw node lets snapd's own
+# 70-snap.<name>.rules add it. Harmless when the snap is not installed.
+SUBSYSTEM=="hidraw", KERNELS=="0003:15D9:0A37.*", TAG+="snap_firefox_firefox"
+SUBSYSTEM=="hidraw", KERNELS=="0003:15D9:0A37.*", TAG+="snap_chromium_chromium"
 EOF
     handle "Failed to install udev rules"
 

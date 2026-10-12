@@ -20,6 +20,8 @@ If you have a fingerprint enrolled with fprintd (`fprintd-enroll`), `install.sh`
 
 On Ubuntu 24.04 and later, AppArmor blocks the unprivileged user namespaces that the service's systemd sandboxing relies on, which makes it fail with `status=226/NAMESPACE`. `install.sh` detects this (`kernel.apparmor_restrict_unprivileged_userns=1`) and installs a drop-in, `/usr/lib/systemd/user/linux-id.service.d/10-apparmor-userns.conf`, that disables only the namespace-based options; the other hardening stays in place.
 
+Snap-packaged browsers (Ubuntu's default Firefox, and Chromium) only allow access to known USB security keys, so they cannot see linux-id's virtual token by default and wait forever at "Touch your security key". The udev rule `install.sh` installs tags linux-id's device so these snaps can use it. If Firefox was running during the install, restart it.
+
 ### Uninstall
 
 Before uninstalling, make sure every account where you registered linux-id has another way to sign in; sites will no longer accept it once it is removed.
