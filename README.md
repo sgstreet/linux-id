@@ -30,27 +30,32 @@ The script lists what it will remove and asks twice for confirmation (answer `y`
 
 If you installed via the AUR or COPR, remove the package with your package manager instead.
 
-### Non-official
+### Upstream packages
 
-#### AUR
+The AUR and Fedora COPR packages are community packages built from the upstream
+[matejsmycka/linux-id](https://github.com/matejsmycka/linux-id) repository, not from this
+fork, so they do not include changes made here (such as `install.sh --uninstall`). To run
+this fork, install with `install.sh` as shown above.
 
-If you're using an Arch-based system, you can install linux-id from the AUR.
+#### AUR (upstream)
+
+On Arch-based systems, the upstream version is available from the AUR:
 ```bash
 yay -Syy linux-id
 ```
 
 [https://aur.archlinux.org/packages/linux-id](https://aur.archlinux.org/packages/linux-id)
 
-#### Fedora
+#### Fedora COPR (upstream)
 
 [![Copr build status](https://copr.fedorainfracloud.org/coprs/hamishw96/linux-id/package/linux-id/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/hamishw96/linux-id/package/linux-id/)
 
-On Fedora systems, you can use COPR to install linux-id:
+On Fedora systems, the upstream version is available from COPR:
 ``` bash
 sudo dnf copr enable hamishw96/linux-id
 sudo dnf install linux-id
 ```
-By default, linux-id uses pinentry for presence confirmation. To use fingerprint
+By default, the packaged service uses pinentry for presence confirmation. To use fingerprint
 authentication via fprintd instead:
 
 1. Ensure a fingerprint is enrolled: `fprintd-enroll`
