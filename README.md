@@ -18,6 +18,8 @@ To use fingerprint authentication, install with `--auth fprintd`.
 ./install.sh --auth fprintd
 ```
 
+On Ubuntu 24.04 and later, AppArmor blocks the unprivileged user namespaces that the service's systemd sandboxing relies on, which makes it fail with `status=226/NAMESPACE`. `install.sh` detects this (`kernel.apparmor_restrict_unprivileged_userns=1`) and installs a drop-in, `/usr/lib/systemd/user/linux-id.service.d/10-apparmor-userns.conf`, that disables only the namespace-based options; the other hardening stays in place.
+
 ### Uninstall
 
 Before uninstalling, make sure every account where you registered linux-id has another way to sign in; sites will no longer accept it once it is removed.

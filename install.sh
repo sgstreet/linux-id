@@ -12,6 +12,10 @@ uninstall=false
 purge=false
 
 cred_dir="$HOME/.config/linux-id"
+unit_dropin_dir=/usr/lib/systemd/user/linux-id.service.d
+userns_dropin="$unit_dropin_dir/10-apparmor-userns.conf"
+# Where 'systemctl --user edit linux-id.service' saves overrides.
+user_dropin_dir="$HOME/.config/systemd/user/linux-id.service.d"
 
 function usage() {
     cat <<EOF
@@ -204,6 +208,49 @@ function make_executable() {
     handle "Failed to install executable to /usr/bin"
 }
 
+# Ubuntu (24.04+) sets kernel.apparmor_restrict_unprivileged_userns=1, which
+# stops the per-user systemd manager from building the user namespace that the
+# unit's filesystem/namespace sandboxing needs; the service then fails with
+# 226/NAMESPACE. On such systems install a drop-in that turns those options
+# off, keeping the hardening that does not need a namespace (NoNewPrivileges,
+# RestrictAddressFamilies, MemoryDenyWriteExecute, ...).
+function install_userns_dropin() {
+    if [ "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null)" != "1" ]; then
+        # Restriction off (or not Ubuntu): keep the full sandbox.
+        if [ -e "$userns_dropin" ]; then
+            sudo rm -f "$userns_dropin"
+            handle "Failed to remove $userns_dropin"
+        fi
+        return
+    fi
+
+    echo "AppArmor restricts unprivileged user namespaces on this system;"
+    echo "installing $userns_dropin to disable the namespace-based sandboxing."
+    sudo install -Dm644 /dev/stdin "$userns_dropin" <<'EOF'
+# Installed by linux-id install.sh because kernel.apparmor_restrict_unprivileged_userns=1.
+# These options need a user namespace in a per-user service, which AppArmor
+# denies, so the service would fail with status=226/NAMESPACE.
+[Service]
+ProtectProc=default
+BindPaths=
+BindReadOnlyPaths=
+ProtectSystem=no
+ProtectHome=no
+PrivateTmp=no
+PrivateMounts=no
+PrivateNetwork=no
+PrivatePIDs=no
+PrivateUsers=no
+ProtectHostname=no
+ProtectClock=no
+ProtectKernelTunables=no
+ProtectKernelModules=no
+ProtectKernelLogs=no
+ProtectControlGroups=no
+EOF
+    handle "Failed to install $userns_dropin"
+}
+
 function install_unit_and_rules() {
     sudo install -Dm644 /dev/stdin /usr/lib/systemd/user/linux-id.service <<EOF
 [Unit]
@@ -252,6 +299,8 @@ DeviceAllow=/dev/uhid
 WantedBy=default.target
 EOF
     handle "Failed to install systemd unit"
+
+    install_userns_dropin
 
     sudo install -Dm644 /dev/stdin /usr/lib/udev/rules.d/60-linux-id-fido-tpm.rules <<'EOF'
 # Allow user access tpmrm0 and uhid
@@ -329,6 +378,8 @@ function uninstall_linux_id() {
     local candidates=(
         /usr/bin/linux-id
         /usr/lib/systemd/user/linux-id.service
+        "$unit_dropin_dir"
+        "$user_dropin_dir"
         /usr/lib/udev/rules.d/60-linux-id-fido-tpm.rules
         /usr/lib/modules-load.d/uhid.conf
         /usr/local/bin/linux-id
@@ -397,6 +448,12 @@ function uninstall_linux_id() {
         /usr/lib/udev/rules.d/60-linux-id-fido-tpm.rules \
         /usr/lib/modules-load.d/uhid.conf
     handle "Failed to remove installed files"
+
+    # Drop-in directories: ours, and any 'systemctl --user edit' overrides.
+    sudo rm -rf "$unit_dropin_dir"
+    handle "Failed to remove $unit_dropin_dir"
+    rm -rf "$user_dropin_dir"
+    handle "Failed to remove $user_dropin_dir"
 
     systemctl --user daemon-reload 2>/dev/null || true
     sudo udevadm control --reload-rules
