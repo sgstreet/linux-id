@@ -6,7 +6,7 @@ Linux-id is FIDO token implementation for Linux that protects the token keys by 
 
 
 ```bash
-curl -O https://raw.githubusercontent.com/matejsmycka/linux-id/refs/heads/main/install.sh
+curl -O https://raw.githubusercontent.com/sgstreet/linux-id/refs/heads/main/install.sh
 chmod +x install.sh
 # Read what the script does before running it
 ./install.sh
