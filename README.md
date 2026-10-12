@@ -18,6 +18,18 @@ To use fingerprint authentication, install with `--auth fprintd`.
 ./install.sh --auth fprintd
 ```
 
+### Uninstall
+
+Before uninstalling, make sure every account where you registered linux-id has another way to sign in; sites will no longer accept it once it is removed.
+
+```bash
+./install.sh --uninstall
+```
+
+The script lists what it will remove and asks twice for confirmation (answer `y`, then type `uninstall`) before changing anything. Stored resident credentials in `~/.config/linux-id` are kept unless you also pass `--purge`, which asks for a third confirmation before deleting them.
+
+If you installed via the AUR or COPR, remove the package with your package manager instead.
+
 ### Non-official
 
 #### AUR

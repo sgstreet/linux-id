@@ -7,16 +7,26 @@ release_url="https://github.com/matejsmycka/linux-id/releases/latest/download/li
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 auth_mode="pinentry"
+auth_given=false
+uninstall=false
+purge=false
+
+cred_dir="$HOME/.config/linux-id"
 
 function usage() {
     cat <<EOF
 Usage: $0 [--auth pinentry|fprintd] [-h|--help]
+       $0 --uninstall [--purge]
 
 Options:
   --auth pinentry   Confirm presence with a click dialog (default).
   --auth fprintd    Confirm presence with a fingerprint scan.
                     Requires fprintd installed and a fingerprint enrolled
                     via 'fprintd-enroll'. Sets the WebAuthn UV flag.
+  --uninstall       Remove linux-id from this system. Asks for confirmation
+                    twice before changing anything.
+  --purge           With --uninstall, also permanently delete the stored
+                    resident credentials in $cred_dir.
   -h, --help        Show this help.
 EOF
 }
@@ -25,10 +35,20 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --auth)
             auth_mode="$2"
+            auth_given=true
             shift 2
             ;;
         --auth=*)
             auth_mode="${1#--auth=}"
+            auth_given=true
+            shift
+            ;;
+        --uninstall)
+            uninstall=true
+            shift
+            ;;
+        --purge)
+            purge=true
             shift
             ;;
         -h|--help)
@@ -42,6 +62,16 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+
+if $purge && ! $uninstall; then
+    echo "--purge is only valid together with --uninstall" >&2
+    exit 1
+fi
+
+if $uninstall && $auth_given; then
+    echo "--auth cannot be combined with --uninstall" >&2
+    exit 1
+fi
 
 case "$auth_mode" in
     pinentry|fprintd) ;;
@@ -268,6 +298,127 @@ function enable_user_service() {
     echo "------------------------"
     systemctl --user --no-pager status linux-id.service || true
 }
+
+# Prompt on stderr and read the answer from the terminal rather than stdin,
+# so piped or redirected input can never confirm an uninstall. With no
+# terminal the answer is empty, which aborts.
+function ask() {
+    local reply=""
+    printf '%s' "$1" >&2
+    read -r reply 2>/dev/null </dev/tty
+    printf '%s' "$reply"
+}
+
+function check_package_install() {
+    if command -v pacman &>/dev/null && pacman -Q linux-id &>/dev/null; then
+        echo "linux-id is installed via the AUR package; remove it with:" >&2
+        echo "    sudo pacman -R linux-id" >&2
+        exit 1
+    fi
+
+    if command -v rpm &>/dev/null && rpm -q linux-id &>/dev/null; then
+        echo "linux-id is installed via an RPM package (e.g. COPR); remove it with:" >&2
+        echo "    sudo dnf remove linux-id" >&2
+        exit 1
+    fi
+}
+
+function uninstall_linux_id() {
+    # Current install locations followed by leftovers from older install.sh
+    # versions (also cleaned up by migrate_old_install).
+    local candidates=(
+        /usr/bin/linux-id
+        /usr/lib/systemd/user/linux-id.service
+        /usr/lib/udev/rules.d/60-linux-id-fido-tpm.rules
+        /usr/lib/modules-load.d/uhid.conf
+        /usr/local/bin/linux-id
+        /etc/udev/rules.d/70-uhid.rules
+        "/home/$USER/.config/autostart/linux-id.desktop"
+        "/home/$USER/.config/systemd/user/linux-id.service"
+    )
+    local present=() f
+
+    check_package_install
+
+    for f in "${candidates[@]}"; do
+        if [ -e "$f" ]; then
+            present+=("$f")
+        fi
+    done
+    if $purge && [ -e "$cred_dir" ]; then
+        present+=("$cred_dir")
+    fi
+
+    if [ ${#present[@]} -eq 0 ]; then
+        echo "linux-id does not appear to be installed; nothing to remove."
+        exit 0
+    fi
+
+    echo "This will stop linux-id.service and remove:"
+    printf '    %s\n' "${present[@]}"
+    echo
+    echo "WARNING: every site where you registered linux-id as a security key"
+    echo "or passkey will stop accepting it. Make sure each of those accounts"
+    echo "has another way to sign in before continuing."
+    if $purge && [ -e "$cred_dir" ]; then
+        echo
+        echo "WARNING: --purge permanently deletes your stored resident"
+        echo "credentials (passkeys) in $cred_dir. Reinstalling linux-id"
+        echo "will not bring them back."
+    fi
+    echo
+
+    if [[ "$(ask "Uninstall linux-id? [y/N] ")" != [yY] ]]; then
+        echo "Aborted; nothing was changed."
+        exit 1
+    fi
+
+    if [ "$(ask "Are you sure? Type 'uninstall' to confirm: ")" != "uninstall" ]; then
+        echo "Aborted; nothing was changed."
+        exit 1
+    fi
+
+    if $purge && [ -e "$cred_dir" ] &&
+        [ "$(ask "Type 'delete' to permanently delete $cred_dir: ")" != "delete" ]; then
+        echo "Aborted; nothing was changed."
+        exit 1
+    fi
+
+    echo "Uninstalling linux-id"
+
+    systemctl --user disable --now linux-id.service 2>/dev/null || true
+
+    # Removes leftovers from older installs and stops any stray process.
+    migrate_old_install
+
+    sudo rm -f \
+        /usr/bin/linux-id \
+        /usr/lib/systemd/user/linux-id.service \
+        /usr/lib/udev/rules.d/60-linux-id-fido-tpm.rules \
+        /usr/lib/modules-load.d/uhid.conf
+    handle "Failed to remove installed files"
+
+    systemctl --user daemon-reload 2>/dev/null || true
+    sudo udevadm control --reload-rules
+    sudo udevadm trigger --subsystem-match=misc --subsystem-match=tpmrm
+
+    if $purge && [ -e "$cred_dir" ]; then
+        rm -rf "$cred_dir"
+        handle "Failed to delete $cred_dir"
+        echo "Deleted $cred_dir"
+    elif [ -e "$cred_dir" ]; then
+        echo "Kept stored credentials in $cred_dir (re-run with --purge to delete them)."
+    fi
+
+    echo
+    echo "linux-id has been uninstalled. Log out and back in (or reboot) to drop"
+    echo "the device permissions granted by the removed udev rule."
+}
+
+if $uninstall; then
+    uninstall_linux_id
+    exit 0
+fi
 
 echo "Installing linux-id (auth=$auth_mode)"
 
