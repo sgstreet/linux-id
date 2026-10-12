@@ -2,6 +2,13 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # "Run workflow" button on the Actions tab: creates the tag on main, then releases.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to create and release, e.g. v0.1.0'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -26,6 +33,30 @@ jobs:
 
     - name: Test
       run: go test -v ./... --timeout 60s
+
+    # A tag pushed with GITHUB_TOKEN does not trigger the push event above,
+    # so this run alone publishes the release.
+    - name: Create tag
+      if: github.event_name == 'workflow_dispatch'
+      env:
+        TAG: ${{ inputs.tag }}
+      run: |
+        if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+          echo "::error::Run this workflow from main (got $GITHUB_REF)"
+          exit 1
+        fi
+        if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+          echo "::error::Tag '$TAG' is not of the form vMAJOR.MINOR.PATCH"
+          exit 1
+        fi
+        if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+          echo "::error::Tag $TAG already exists"
+          exit 1
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git tag -a "$TAG" -m "linux-id $TAG"
+        git push origin "refs/tags/$TAG"
 
     - name: Build and publish release
       uses: goreleaser/goreleaser-action@v6

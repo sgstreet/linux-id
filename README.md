@@ -77,12 +77,14 @@ https://copr.fedorainfracloud.org/coprs/hamishw96/linux-id/
 
 ## Releasing
 
-Pushing a version tag builds and publishes a GitHub release with GoReleaser (`.github/workflows/release.yml`):
+Releases are built and published with GoReleaser (`.github/workflows/release.yml`). Either push a version tag:
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
+
+or, on GitHub, open **Actions → Release → Run workflow**, keep the branch on `main`, and enter the tag (e.g. `v0.1.0`). The workflow creates the tag on `main` and publishes the release.
 
 The release includes `linux-id_Linux_x86_64.tar.gz`, which `install.sh` downloads when Go is not installed, plus arm64 and i386 builds.
 
