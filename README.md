@@ -12,7 +12,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-To use fingerprint authentication, install with `--auth fprintd`.
+If you have a fingerprint enrolled with fprintd (`fprintd-enroll`), `install.sh` sets the service up for fingerprint authentication (`--auth fprintd`); otherwise it uses the pinentry click dialog. To choose explicitly, pass `--auth fprintd` or `--auth pinentry`.
 
 ```bash
 ./install.sh --auth fprintd

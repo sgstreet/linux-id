@@ -23,10 +23,12 @@ Usage: $0 [--auth pinentry|fprintd] [-h|--help]
        $0 --uninstall [--purge]
 
 Options:
-  --auth pinentry   Confirm presence with a click dialog (default).
+  --auth pinentry   Confirm presence with a click dialog.
   --auth fprintd    Confirm presence with a fingerprint scan.
                     Requires fprintd installed and a fingerprint enrolled
                     via 'fprintd-enroll'. Sets the WebAuthn UV flag.
+                    Without --auth, fprintd is used if you have a
+                    fingerprint enrolled, otherwise pinentry.
   --uninstall       Remove linux-id from this system. Asks for confirmation
                     twice before changing anything.
   --purge           With --uninstall, also permanently delete the stored
@@ -75,6 +77,17 @@ fi
 if $uninstall && $auth_given; then
     echo "--auth cannot be combined with --uninstall" >&2
     exit 1
+fi
+
+# fprintd-list prints one " - #N: <finger>" line per enrolled finger.
+function fingerprint_enrolled() {
+    command -v fprintd-list &>/dev/null || return 1
+    timeout 10 fprintd-list "$USER" 2>/dev/null | grep -Eq '^[[:space:]]*- #[0-9]+:'
+}
+
+if ! $uninstall && ! $auth_given && fingerprint_enrolled; then
+    echo "Found an enrolled fingerprint; using --auth fprintd (pass --auth pinentry to override)."
+    auth_mode="fprintd"
 fi
 
 case "$auth_mode" in
