@@ -3,7 +3,7 @@
 set -o pipefail
 
 executable=linux-id
-release_url="https://github.com/matejsmycka/linux-id/releases/latest/download/linux-id_Linux_x86_64.tar.gz"
+release_url="https://github.com/sgstreet/linux-id/releases/latest/download/linux-id_Linux_x86_64.tar.gz"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 
 auth_mode="pinentry"
@@ -208,7 +208,7 @@ function install_unit_and_rules() {
     sudo install -Dm644 /dev/stdin /usr/lib/systemd/user/linux-id.service <<EOF
 [Unit]
 Description=linux-id TPM service
-Documentation=https://github.com/matejsmycka/linux-id
+Documentation=https://github.com/sgstreet/linux-id
 ConditionSecurity=tpm2
 ConditionKernelModuleLoaded=uhid
 

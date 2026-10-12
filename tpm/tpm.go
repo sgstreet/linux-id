@@ -13,7 +13,7 @@ import (
 	tpm2 "github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
 	"github.com/google/go-tpm/tpm2/transport/linuxtpm"
-	"github.com/matejsmycka/linux-id/internal/lencode"
+	"github.com/sgstreet/linux-id/internal/lencode"
 	"golang.org/x/crypto/cryptobyte"
 	"golang.org/x/crypto/cryptobyte/asn1"
 	"golang.org/x/crypto/hkdf"

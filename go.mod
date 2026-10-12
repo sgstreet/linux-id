@@ -1,4 +1,4 @@
-module github.com/matejsmycka/linux-id
+module github.com/sgstreet/linux-id
 
 go 1.26.0
 
