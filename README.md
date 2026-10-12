@@ -75,6 +75,17 @@ ExecStart=/usr/bin/linux-id --auth fprintd
 https://copr.fedorainfracloud.org/coprs/hamishw96/linux-id/
 
 
+## Releasing
+
+Pushing a version tag builds and publishes a GitHub release with GoReleaser (`.github/workflows/release.yml`):
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release includes `linux-id_Linux_x86_64.tar.gz`, which `install.sh` downloads when Go is not installed, plus arm64 and i386 builds.
+
 ## Test
 
 You can test the installation by visiting [https://demo.yubico.com/webauthn-technical/registration](https://demo.yubico.com/webauthn-technical/registration) and follow fido token enroll and authentication steps.
