@@ -6,39 +6,60 @@ Linux-id is FIDO token implementation for Linux that protects the token keys by 
 
 
 ```bash
-curl -O https://raw.githubusercontent.com/matejsmycka/linux-id/refs/heads/main/install.sh
+curl -O https://raw.githubusercontent.com/sgstreet/linux-id/refs/heads/main/install.sh
 chmod +x install.sh
 # Read what the script does before running it
 ./install.sh
 ```
 
-To use fingerprint authentication, install with `--auth fprintd`.
+If you have a fingerprint enrolled with fprintd (`fprintd-enroll`), `install.sh` sets the service up for fingerprint authentication (`--auth fprintd`); otherwise it uses the pinentry click dialog. To choose explicitly, pass `--auth fprintd` or `--auth pinentry`.
 
 ```bash
 ./install.sh --auth fprintd
 ```
 
-### Non-official
+On Ubuntu 24.04 and later, AppArmor blocks the unprivileged user namespaces that the service's systemd sandboxing relies on, which makes it fail with `status=226/NAMESPACE`. `install.sh` detects this (`kernel.apparmor_restrict_unprivileged_userns=1`) and installs a drop-in, `/usr/lib/systemd/user/linux-id.service.d/10-apparmor-userns.conf`, that disables only the namespace-based options; the other hardening stays in place.
 
-#### AUR
+Snap-packaged browsers (Ubuntu's default Firefox, and Chromium) only allow access to known USB security keys, so they cannot see linux-id's virtual token by default and wait forever at "Touch your security key". The udev rule `install.sh` installs tags linux-id's device so these snaps can use it. If Firefox was running during the install, restart it.
 
-If you're using an Arch-based system, you can install linux-id from the AUR.
+### Uninstall
+
+Before uninstalling, make sure every account where you registered linux-id has another way to sign in; sites will no longer accept it once it is removed.
+
+```bash
+./install.sh --uninstall
+```
+
+The script lists what it will remove and asks twice for confirmation (answer `y`, then type `uninstall`) before changing anything. Stored resident credentials in `~/.config/linux-id` are kept unless you also pass `--purge`, which asks for a third confirmation before deleting them.
+
+If you installed via the AUR or COPR, remove the package with your package manager instead.
+
+### Upstream packages
+
+The AUR and Fedora COPR packages are community packages built from the upstream
+[matejsmycka/linux-id](https://github.com/matejsmycka/linux-id) repository, not from this
+fork, so they do not include changes made here (such as `install.sh --uninstall`). To run
+this fork, install with `install.sh` as shown above.
+
+#### AUR (upstream)
+
+On Arch-based systems, the upstream version is available from the AUR:
 ```bash
 yay -Syy linux-id
 ```
 
 [https://aur.archlinux.org/packages/linux-id](https://aur.archlinux.org/packages/linux-id)
 
-#### Fedora
+#### Fedora COPR (upstream)
 
 [![Copr build status](https://copr.fedorainfracloud.org/coprs/hamishw96/linux-id/package/linux-id/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/hamishw96/linux-id/package/linux-id/)
 
-On Fedora systems, you can use COPR to install linux-id:
+On Fedora systems, the upstream version is available from COPR:
 ``` bash
 sudo dnf copr enable hamishw96/linux-id
 sudo dnf install linux-id
 ```
-By default, linux-id uses pinentry for presence confirmation. To use fingerprint
+By default, the packaged service uses pinentry for presence confirmation. To use fingerprint
 authentication via fprintd instead:
 
 1. Ensure a fingerprint is enrolled: `fprintd-enroll`
@@ -53,6 +74,17 @@ ExecStart=/usr/bin/linux-id --auth fprintd
 
 https://copr.fedorainfracloud.org/coprs/hamishw96/linux-id/
 
+
+## Releasing
+
+Pushing a version tag builds and publishes a GitHub release with GoReleaser (`.github/workflows/release.yml`):
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release includes `linux-id_Linux_x86_64.tar.gz`, which `install.sh` downloads when Go is not installed, plus arm64 and i386 builds.
 
 ## Test
 

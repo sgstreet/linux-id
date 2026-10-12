@@ -8,8 +8,8 @@ import (
 	"io"
 	"log"
 
-	"github.com/matejsmycka/linux-id/fidoauth"
 	"github.com/psanford/uhid"
+	"github.com/sgstreet/linux-id/fidoauth"
 )
 
 func New(ctx context.Context, name string) (*SoftToken, error) {
